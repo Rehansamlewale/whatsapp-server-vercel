@@ -37,7 +37,11 @@ app.use(cors({
         'http://localhost:3001',      // WhatsApp server itself (local)
         'https://yashasavibhava.com', // Production domain
         'https://loan-server-pfyk.onrender.com',  // Render deployment
-        'https://loan-server-pfyk.onrender.com/qr'  // Render QR page
+        'https://loan-server-pfyk.onrender.com/qr',  // Render QR page
+        // Add Vercel domains
+        'https://whatsapp-server-vercel.vercel.app',
+        'https://whatsapp-server-vercel-*.vercel.app',  // Preview deployments
+        /\.vercel\.app$/  // All Vercel domains
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -69,12 +73,14 @@ const MAX_INIT_ATTEMPTS = 3;  // Prevent infinite restart loops
 const initializeWhatsApp = () => {
     if (initAttempts >= MAX_INIT_ATTEMPTS) {
         console.error('❌ Max initialization attempts reached. Server will not auto-restart.');
-        console.log('💡 This usually means insufficient resources. Consider upgrading Render tier.');
+        console.log('💡 This usually means insufficient resources or network issues.');
         return;
     }
 
     initAttempts++;
-    console.log(`🔄 Initializing WhatsApp Client (Attempt ${initAttempts}/${MAX_INIT_ATTEMPTS})...`);
+    console.log(`🔄 Initializing WhatsApp Client for Vercel (Attempt ${initAttempts}/${MAX_INIT_ATTEMPTS})...`);
+    console.log(`🌍 Platform: Vercel Serverless`);
+    console.log(`💾 Memory: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
 
     try {
 
@@ -86,35 +92,58 @@ const initializeWhatsApp = () => {
             puppeteer: {
                 headless: true,
                 args: [
+                    // Essential Vercel optimizations
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
                     '--disable-dev-shm-usage',
-                    '--disable-accelerated-2d-canvas',
-                    '--no-first-run',
-                    '--no-zygote',
-                    '--single-process',
                     '--disable-gpu',
                     '--disable-web-security',
                     '--disable-features=VizDisplayCompositor',
-                    '--disable-extensions',
-                    '--disable-plugins',
-                    '--disable-default-apps',
+                    '--no-first-run',
+                    '--no-zygote',
+                    '--single-process',
+                    // Vercel-specific performance optimizations
+                    '--disable-background-networking',
                     '--disable-background-timer-throttling',
                     '--disable-backgrounding-occluded-windows',
                     '--disable-renderer-backgrounding',
-                    '--disable-ipc-flooding-protection',
-                    // Production optimizations
+                    '--disable-extensions',
+                    '--disable-plugins',
+                    '--disable-default-apps',
+                    '--disable-hang-monitor',
+                    '--disable-popup-blocking',
+                    '--disable-prompt-on-repost',
+                    '--disable-sync',
+                    '--disable-translate',
+                    '--metrics-recording-only',
+                    '--no-default-browser-check',
+                    '--safebrowsing-disable-auto-update',
                     '--disable-software-rasterizer',
-                    '--disable-dev-shm-usage',
                     '--disable-blink-features=AutomationControlled',
-                    '--js-flags=--max-old-space-size=256'  // Very low memory for free tier
+                    // Memory optimization for Vercel
+                    '--memory-pressure-off',
+                    '--max_old_space_size=512',
+                    '--js-flags=--max-old-space-size=512'
                 ],
-                timeout: NODE_ENV === 'production' ? 90000 : 120000  // 90s timeout in production
+                // Faster timeout for Vercel
+                timeout: 60000,  // 60 seconds - faster than Render
+                // Vercel-specific launch options
+                ignoreDefaultArgs: ['--disable-extensions'],
+                handleSIGINT: false,
+                handleSIGTERM: false,
+                handleSIGHUP: false
             },
+            // Use local web version cache for faster startup
             webVersionCache: {
                 type: 'remote',
                 remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html',
-            }
+            },
+            // Faster session restore
+            restartOnAuthFail: true,
+            // Optimize for Vercel's serverless environment
+            qrMaxRetries: 3,
+            takeoverOnConflict: true,
+            takeoverTimeoutMs: 30000
         });
 
         // Prevent crashes from unhandled errors
@@ -124,25 +153,27 @@ const initializeWhatsApp = () => {
         });
 
         client.on('qr', async (qr) => {
+            const qrStartTime = Date.now();
             console.log('📱 QR Code received! Generating image...');
 
             try {
-                // Generate QR code data URL
+                // Generate QR code data URL with optimized settings for speed
                 qrCodeData = await qrcode.toDataURL(qr, {
-                    width: 300,
-                    margin: 2,
+                    width: 256,  // Smaller for faster generation
+                    margin: 1,   // Smaller margin
                     color: {
                         dark: '#000000',
                         light: '#FFFFFF'
-                    }
+                    },
+                    errorCorrectionLevel: 'M'  // Medium error correction for speed
                 });
 
-                console.log('✅ QR Code ready!');
+                const qrEndTime = Date.now();
+                console.log(`✅ QR Code ready in ${qrEndTime - qrStartTime}ms!`);
+                console.log('🌐 Vercel URL: https://whatsapp-server-vercel.vercel.app/qr');
                 console.log('🌐 Local: http://localhost:3001/qr');
-                console.log('🌐 Production: https://loan-server-pfyk.onrender.com/qr');
-                console.log('📱 Or scan the QR code below:');
 
-                // Display QR in console
+                // Display QR in console (optional)
                 try {
                     const qrTerminal = require('qrcode-terminal');
                     qrTerminal.generate(qr, { small: true });
@@ -320,17 +351,74 @@ app.get('/qr', (req, res) => {
                         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #25D366; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 20px auto; }
                         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
                         .btn { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 10px; }
+                        .progress { background: #e9ecef; border-radius: 10px; height: 20px; margin: 20px 0; overflow: hidden; }
+                        .progress-bar { background: #25D366; height: 100%; width: 0%; transition: width 0.5s ease; }
+                        .status-text { color: #666; margin: 10px 0; }
                     </style>
                 </head>
                 <body>
                     <div class="container">
                         <h1>⏳ Loading WhatsApp...</h1>
                         <div class="spinner"></div>
-                        <p>Please wait while the QR code is generated...</p>
-                        <p>This usually takes 10-30 seconds.</p>
+                        <div class="progress">
+                            <div class="progress-bar" id="progressBar"></div>
+                        </div>
+                        <p class="status-text" id="statusText">Initializing WhatsApp client...</p>
+                        <p>QR code will appear here automatically.</p>
                         <button onclick="location.reload()" class="btn">🔄 Refresh</button>
-
                     </div>
+                    
+                    <script>
+                        let progress = 0;
+                        let attempts = 0;
+                        const maxAttempts = 60; // 60 seconds max wait
+                        
+                        function updateProgress() {
+                            progress = Math.min((attempts / maxAttempts) * 100, 95);
+                            document.getElementById('progressBar').style.width = progress + '%';
+                            
+                            if (attempts < 10) {
+                                document.getElementById('statusText').textContent = 'Starting WhatsApp client...';
+                            } else if (attempts < 20) {
+                                document.getElementById('statusText').textContent = 'Loading WhatsApp Web...';
+                            } else if (attempts < 40) {
+                                document.getElementById('statusText').textContent = 'Generating QR code...';
+                            } else {
+                                document.getElementById('statusText').textContent = 'Almost ready...';
+                            }
+                        }
+                        
+                        function checkForQR() {
+                            fetch('/api/whatsapp/status')
+                                .then(response => response.json())
+                                .then(data => {
+                                    attempts++;
+                                    updateProgress();
+                                    
+                                    if (data.hasQR || data.connected) {
+                                        // QR is ready or already connected
+                                        location.reload();
+                                    } else if (attempts >= maxAttempts) {
+                                        document.getElementById('statusText').textContent = 'Taking longer than expected. Please refresh.';
+                                        document.getElementById('progressBar').style.backgroundColor = '#dc3545';
+                                    } else {
+                                        // Keep checking
+                                        setTimeout(checkForQR, 1000);
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error:', error);
+                                    attempts++;
+                                    updateProgress();
+                                    if (attempts < maxAttempts) {
+                                        setTimeout(checkForQR, 2000);
+                                    }
+                                });
+                        }
+                        
+                        // Start checking immediately
+                        checkForQR();
+                    </script>
                 </body>
             </html>
         `);
@@ -475,6 +563,43 @@ app.post('/api/whatsapp/logout', async (req, res) => {
     }
 });
 
+// Helper function to ensure chat exists (fixes "No LID for user" error)
+const ensureChatExists = async (formattedPhone) => {
+    try {
+        console.log(`🔍 Checking if chat exists for ${formattedPhone}...`);
+        
+        // Try to get existing chat
+        const existingChat = await client.getChatById(formattedPhone);
+        if (existingChat) {
+            console.log(`✅ Chat already exists for ${formattedPhone}`);
+            return true;
+        }
+    } catch (error) {
+        console.log(`⚠️ Chat doesn't exist for ${formattedPhone}, will create it...`);
+    }
+
+    try {
+        // Force WhatsApp to create chat by checking if number is registered
+        const isRegistered = await client.isRegisteredUser(formattedPhone);
+        if (!isRegistered) {
+            throw new Error('Phone number is not registered on WhatsApp');
+        }
+
+        // Send a minimal message to force chat creation (this creates the LID)
+        console.log(`🔄 Creating chat session for ${formattedPhone}...`);
+        await client.sendMessage(formattedPhone, '.');
+        
+        // Small delay to let WhatsApp process the chat creation
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        console.log(`✅ Chat session created for ${formattedPhone}`);
+        return true;
+    } catch (error) {
+        console.error(`❌ Failed to create chat for ${formattedPhone}:`, error.message);
+        throw error;
+    }
+};
+
 // Send single message
 app.post('/api/whatsapp/send-message', async (req, res) => {
     try {
@@ -523,24 +648,40 @@ app.post('/api/whatsapp/send-message', async (req, res) => {
         // Format phone number for WhatsApp
         const formattedPhone = phone.includes('@c.us') ? phone : `${phone}@c.us`;
 
-        // Send message with timeout
+        console.log(`📱 Attempting to send message to ${formattedPhone}`);
+
+        // STEP 1: Ensure chat exists (fixes "No LID for user" error)
+        try {
+            await ensureChatExists(formattedPhone);
+        } catch (chatError) {
+            console.error('❌ Failed to ensure chat exists:', chatError.message);
+            return res.status(400).json({
+                success: false,
+                error: `Failed to create chat: ${chatError.message}`
+            });
+        }
+
+        // STEP 2: Send the actual message with timeout
         const sendTimeout = new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Message send timeout after 30 seconds')), 30000)
         );
 
+        console.log(`📤 Sending actual message to ${formattedPhone}...`);
         const sentMessage = await Promise.race([
             client.sendMessage(formattedPhone, message),
             sendTimeout
         ]);
 
+        console.log(`✅ Message sent successfully to ${formattedPhone}`);
         res.json({
             success: true,
             messageId: sentMessage.id.id,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            phone: formattedPhone
         });
 
     } catch (error) {
-        console.error('Error sending message:', error);
+        console.error('❌ Error sending message:', error);
 
         // Provide more specific error messages
         let errorMessage = error.message;
@@ -549,11 +690,16 @@ app.post('/api/whatsapp/send-message', async (req, res) => {
             isReady = false; // Reset ready state
         } else if (error.message.includes('timeout')) {
             errorMessage = 'Message sending timed out. Please try again.';
+        } else if (error.message.includes('No LID for user')) {
+            errorMessage = 'WhatsApp could not create chat session. The number might not be registered or blocked.';
+        } else if (error.message.includes('not registered')) {
+            errorMessage = 'This phone number is not registered on WhatsApp.';
         }
 
         res.status(500).json({
             success: false,
-            error: errorMessage
+            error: errorMessage,
+            details: error.message
         });
     }
 });
@@ -578,39 +724,82 @@ app.post('/api/whatsapp/send-bulk', async (req, res) => {
         }
 
         const results = [];
+        console.log(`📤 Starting bulk message send to ${contacts.length} contacts...`);
 
-        for (const contact of contacts) {
+        for (let i = 0; i < contacts.length; i++) {
+            const contact = contacts[i];
             try {
                 const formattedPhone = contact.phone.includes('@c.us') ? contact.phone : `${contact.phone}@c.us`;
+                
+                console.log(`📱 Processing contact ${i + 1}/${contacts.length}: ${formattedPhone}`);
 
+                // STEP 1: Ensure chat exists for this contact
+                try {
+                    await ensureChatExists(formattedPhone);
+                } catch (chatError) {
+                    console.error(`❌ Failed to create chat for ${formattedPhone}:`, chatError.message);
+                    results.push({
+                        contact: contact,
+                        success: false,
+                        error: `Failed to create chat: ${chatError.message}`
+                    });
+                    continue; // Skip to next contact
+                }
+
+                // STEP 2: Send the actual message
                 const sentMessage = await client.sendMessage(formattedPhone, message);
 
                 results.push({
                     contact: contact,
                     success: true,
-                    messageId: sentMessage.id.id
+                    messageId: sentMessage.id.id,
+                    timestamp: new Date().toISOString()
                 });
 
+                console.log(`✅ Message sent to ${formattedPhone}`);
+
                 // Add delay between messages to avoid rate limiting
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                if (i < contacts.length - 1) { // Don't delay after the last message
+                    console.log('⏳ Waiting 3 seconds before next message...');
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                }
 
             } catch (error) {
+                console.error(`❌ Error sending to ${contact.phone}:`, error.message);
+                
+                let errorMessage = error.message;
+                if (error.message.includes('No LID for user')) {
+                    errorMessage = 'WhatsApp could not create chat session. Number might not be registered.';
+                } else if (error.message.includes('not registered')) {
+                    errorMessage = 'Phone number is not registered on WhatsApp.';
+                }
+
                 results.push({
                     contact: contact,
                     success: false,
-                    error: error.message
+                    error: errorMessage
                 });
             }
         }
 
+        const successCount = results.filter(r => r.success).length;
+        const failureCount = results.filter(r => !r.success).length;
+
+        console.log(`📊 Bulk send complete: ${successCount} success, ${failureCount} failed`);
+
         res.json({
             success: true,
             results: results,
+            summary: {
+                total: contacts.length,
+                successful: successCount,
+                failed: failureCount
+            },
             timestamp: new Date().toISOString()
         });
 
     } catch (error) {
-        console.error('Error sending bulk messages:', error);
+        console.error('❌ Error in bulk message send:', error);
         res.status(500).json({
             success: false,
             error: error.message
