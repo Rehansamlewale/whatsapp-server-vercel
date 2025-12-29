@@ -374,9 +374,58 @@ app.get('/', (req, res) => {
                     <li><a href="/qr">📱 QR Code for Authentication</a></li>
                     <li><a href="/api/whatsapp/status">📊 API Status (JSON)</a></li>
                     <li><a href="/health">🏥 Health Check</a></li>
+                    <li><a href="/pr">🔗 PR Information</a></li>
                 </ul>
                 <hr>
                 <p><em>Server running since: ${new Date().toLocaleString()}</em></p>
+            </body>
+        </html>
+    `);
+});
+
+// PR endpoint - Add your specific functionality here
+app.get('/pr', (req, res) => {
+    res.send(`
+        <html>
+            <head>
+                <title>PR Information - WhatsApp API</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 20px; background: #f0f0f0; }
+                    .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+                    .btn { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; display: inline-block; margin: 10px 5px; }
+                    .btn:hover { background: #0056b3; }
+                    .status { padding: 10px; border-radius: 5px; margin: 10px 0; }
+                    .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+                    .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1>🔗 PR Information</h1>
+                    
+                    <div class="status ${isReady ? 'success' : 'warning'}">
+                        <strong>WhatsApp Status:</strong> ${isReady ? '✅ Connected and Ready' : '⏳ Waiting for Authentication'}
+                    </div>
+                    
+                    <h3>📋 Server Information:</h3>
+                    <ul>
+                        <li><strong>Port:</strong> ${PORT}</li>
+                        <li><strong>Environment:</strong> ${NODE_ENV}</li>
+                        <li><strong>Uptime:</strong> ${Math.floor(process.uptime())} seconds</li>
+                        <li><strong>Memory Usage:</strong> ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)} MB</li>
+                        <li><strong>Node Version:</strong> ${process.version}</li>
+                    </ul>
+                    
+                    <h3>🔗 Quick Links:</h3>
+                    <a href="/qr" class="btn">📱 QR Code</a>
+                    <a href="/api/whatsapp/status" class="btn">📊 API Status</a>
+                    <a href="/health" class="btn">🏥 Health Check</a>
+                    <a href="/" class="btn">🏠 Home</a>
+                    
+                    <hr>
+                    <p><em>Last updated: ${new Date().toLocaleString()}</em></p>
+                </div>
             </body>
         </html>
     `);
