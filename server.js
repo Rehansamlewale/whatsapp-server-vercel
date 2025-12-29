@@ -78,9 +78,10 @@ const initializeWhatsApp = () => {
     }
 
     initAttempts++;
-    console.log(`🔄 Initializing WhatsApp Client for Vercel (Attempt ${initAttempts}/${MAX_INIT_ATTEMPTS})...`);
-    console.log(`🌍 Platform: Vercel Serverless`);
+    console.log(`� FASTi Vercel WhatsApp Init (Attempt ${initAttempts}/${MAX_INIT_ATTEMPTS})...`);
+    console.log(`⚡ Platform: Vercel Serverless (Optimized for Speed)`);
     console.log(`💾 Memory: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+    console.log(`🎯 Target: QR in <30 seconds`);
 
     try {
 
@@ -92,7 +93,7 @@ const initializeWhatsApp = () => {
             puppeteer: {
                 headless: true,
                 args: [
-                    // Essential Vercel optimizations
+                    // AGGRESSIVE Vercel optimizations for SPEED
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
                     '--disable-dev-shm-usage',
@@ -102,7 +103,7 @@ const initializeWhatsApp = () => {
                     '--no-first-run',
                     '--no-zygote',
                     '--single-process',
-                    // Vercel-specific performance optimizations
+                    // SPEED optimizations
                     '--disable-background-networking',
                     '--disable-background-timer-throttling',
                     '--disable-backgrounding-occluded-windows',
@@ -115,35 +116,52 @@ const initializeWhatsApp = () => {
                     '--disable-prompt-on-repost',
                     '--disable-sync',
                     '--disable-translate',
-                    '--metrics-recording-only',
+                    '--disable-ipc-flooding-protection',
+                    '--disable-component-extensions-with-background-pages',
+                    '--disable-background-mode',
+                    '--disable-client-side-phishing-detection',
+                    '--disable-default-apps',
+                    '--disable-domain-reliability',
+                    '--disable-features=TranslateUI',
+                    '--disable-features=BlinkGenPropertyTrees',
+                    '--disable-logging',
+                    '--disable-notifications',
+                    '--disable-permissions-api',
+                    '--disable-speech-api',
+                    '--hide-scrollbars',
+                    '--mute-audio',
                     '--no-default-browser-check',
-                    '--safebrowsing-disable-auto-update',
+                    '--no-pings',
                     '--disable-software-rasterizer',
                     '--disable-blink-features=AutomationControlled',
-                    // Memory optimization for Vercel
+                    // MEMORY optimization for Vercel (CRITICAL)
                     '--memory-pressure-off',
-                    '--max_old_space_size=512',
-                    '--js-flags=--max-old-space-size=512'
+                    '--max_old_space_size=1024',
+                    '--js-flags=--max-old-space-size=1024'
                 ],
-                // Faster timeout for Vercel
-                timeout: 60000,  // 60 seconds - faster than Render
-                // Vercel-specific launch options
-                ignoreDefaultArgs: ['--disable-extensions'],
+                // MUCH faster timeout for Vercel
+                timeout: 45000,  // 45 seconds - AGGRESSIVE
+                // Vercel-specific launch options for SPEED
+                ignoreDefaultArgs: ['--disable-extensions', '--enable-automation'],
                 handleSIGINT: false,
                 handleSIGTERM: false,
-                handleSIGHUP: false
+                handleSIGHUP: false,
+                // SPEED settings
+                slowMo: 0,
+                devtools: false
             },
-            // Use local web version cache for faster startup
+            // FASTER web version - use local cache
             webVersionCache: {
-                type: 'remote',
-                remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html',
+                type: 'local'  // LOCAL cache for speed
             },
-            // Faster session restore
-            restartOnAuthFail: true,
-            // Optimize for Vercel's serverless environment
-            qrMaxRetries: 3,
-            takeoverOnConflict: true,
-            takeoverTimeoutMs: 30000
+            // AGGRESSIVE session settings for Vercel
+            restartOnAuthFail: false,  // Don't restart, just fail fast
+            qrMaxRetries: 2,  // Fewer retries for speed
+            takeoverOnConflict: false,  // Don't takeover, fail fast
+            takeoverTimeoutMs: 15000,  // Shorter timeout
+            // SPEED settings
+            authTimeoutMs: 30000,  // 30 second auth timeout
+            qrRefreshIntervalMs: 20000  // Refresh QR every 20 seconds
         });
 
         // Prevent crashes from unhandled errors
@@ -154,35 +172,46 @@ const initializeWhatsApp = () => {
 
         client.on('qr', async (qr) => {
             const qrStartTime = Date.now();
-            console.log('📱 QR Code received! Generating image...');
+            console.log('📱 QR Code received! Generating FAST image...');
 
             try {
-                // Generate QR code data URL with optimized settings for speed
+                // SUPER FAST QR generation - minimal settings
                 qrCodeData = await qrcode.toDataURL(qr, {
-                    width: 256,  // Smaller for faster generation
-                    margin: 1,   // Smaller margin
+                    width: 200,  // SMALLER for SPEED
+                    margin: 0,   // NO margin for SPEED
                     color: {
-                        dark: '#000000',
-                        light: '#FFFFFF'
+                        dark: '#000',
+                        light: '#FFF'
                     },
-                    errorCorrectionLevel: 'M'  // Medium error correction for speed
+                    errorCorrectionLevel: 'L',  // LOW error correction for SPEED
+                    type: 'image/png',
+                    quality: 0.3,  // Lower quality for SPEED
+                    rendererOpts: {
+                        quality: 0.3
+                    }
                 });
 
                 const qrEndTime = Date.now();
-                console.log(`✅ QR Code ready in ${qrEndTime - qrStartTime}ms!`);
-                console.log('🌐 Vercel URL: https://whatsapp-server-vercel.vercel.app/qr');
+                console.log(`✅ FAST QR Code ready in ${qrEndTime - qrStartTime}ms!`);
+                console.log('🚀 Vercel URL: https://whatsapp-server-vercel.vercel.app/qr');
                 console.log('🌐 Local: http://localhost:3001/qr');
 
-                // Display QR in console (optional)
-                try {
-                    const qrTerminal = require('qrcode-terminal');
-                    qrTerminal.generate(qr, { small: true });
-                } catch (e) {
-                    console.log('💡 Install qrcode-terminal for console QR: npm install qrcode-terminal');
-                }
+                // Skip console QR for speed
+                console.log('⚡ QR generation optimized for Vercel speed');
 
             } catch (error) {
                 console.error('❌ Error generating QR code:', error);
+                // Fallback: try even simpler QR
+                try {
+                    qrCodeData = await qrcode.toDataURL(qr, {
+                        width: 150,
+                        margin: 0,
+                        errorCorrectionLevel: 'L'
+                    });
+                    console.log('✅ Fallback QR generated');
+                } catch (fallbackError) {
+                    console.error('❌ Fallback QR failed:', fallbackError);
+                }
             }
         });
 
@@ -371,20 +400,20 @@ app.get('/qr', (req, res) => {
                     <script>
                         let progress = 0;
                         let attempts = 0;
-                        const maxAttempts = 60; // 60 seconds max wait
+                        const maxAttempts = 45; // 45 seconds max wait (FASTER)
                         
                         function updateProgress() {
                             progress = Math.min((attempts / maxAttempts) * 100, 95);
                             document.getElementById('progressBar').style.width = progress + '%';
                             
-                            if (attempts < 10) {
-                                document.getElementById('statusText').textContent = 'Starting WhatsApp client...';
-                            } else if (attempts < 20) {
-                                document.getElementById('statusText').textContent = 'Loading WhatsApp Web...';
-                            } else if (attempts < 40) {
-                                document.getElementById('statusText').textContent = 'Generating QR code...';
+                            if (attempts < 5) {
+                                document.getElementById('statusText').textContent = '⚡ Fast Vercel startup...';
+                            } else if (attempts < 15) {
+                                document.getElementById('statusText').textContent = '🚀 Loading WhatsApp Web...';
+                            } else if (attempts < 30) {
+                                document.getElementById('statusText').textContent = '📱 Generating QR code...';
                             } else {
-                                document.getElementById('statusText').textContent = 'Almost ready...';
+                                document.getElementById('statusText').textContent = '⏳ Almost ready...';
                             }
                         }
                         
@@ -402,8 +431,8 @@ app.get('/qr', (req, res) => {
                                         document.getElementById('statusText').textContent = 'Taking longer than expected. Please refresh.';
                                         document.getElementById('progressBar').style.backgroundColor = '#dc3545';
                                     } else {
-                                        // Keep checking
-                                        setTimeout(checkForQR, 1000);
+                                        // Keep checking FASTER
+                                        setTimeout(checkForQR, 500);  // Check every 500ms (FASTER)
                                     }
                                 })
                                 .catch(error => {
@@ -411,7 +440,7 @@ app.get('/qr', (req, res) => {
                                     attempts++;
                                     updateProgress();
                                     if (attempts < maxAttempts) {
-                                        setTimeout(checkForQR, 2000);
+                                        setTimeout(checkForQR, 1000);
                                     }
                                 });
                         }
