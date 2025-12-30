@@ -517,6 +517,7 @@ app.get('/', (req, res) => {
                     <a href="/qr" class="btn">📱 QR Code</a>
                     <a href="/status" class="btn">📊 Status</a>
                     <a href="/health" class="btn">🏥 Health</a>
+                    <a href="/endpoints" class="btn">📋 API Endpoints</a>
                     
                     <hr>
                     <p><em>Server running since: ${new Date().toLocaleString()}</em></p>
@@ -528,6 +529,95 @@ app.get('/', (req, res) => {
 
 // ✅ ENHANCED Send message endpoint with LID fix
 app.post('/send', async (req, res) => {
+    try {
+        if (!isReady || !client) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'WhatsApp not connected. Scan QR code first.' 
+            });
+        }
+
+        const { phone, message } = req.body;
+
+        if (!phone || !message) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Phone and message are required' 
+            });
+        }
+
+        // Format phone number
+        let formattedPhone = phone.trim();
+        if (!formattedPhone.includes('@c.us')) {
+            // Remove any non-digit characters
+            formattedPhone = formattedPhone.replace(/\D/g, '');
+            // Add country code if not present (assuming India +91)
+            if (!formattedPhone.startsWith('91') && formattedPhone.length === 10) {
+                formattedPhone = '91' + formattedPhone;
+            }
+            formattedPhone = `${formattedPhone}@c.us`;
+        }
+
+        console.log(`📤 Attempting to send to ${formattedPhone}...`);
+
+        // STEP 1: Ensure chat exists (Fixes "No LID" error)
+        try {
+            await ensureChatExists(formattedPhone);
+            console.log(`✅ Chat verified/created for ${formattedPhone}`);
+        } catch (chatError) {
+            console.error(`❌ Chat preparation failed for ${formattedPhone}:`, chatError.message);
+            // If chat creation fails, try direct send anyway
+            console.log(`⚠️ Bypassing chat check, trying direct send...`);
+        }
+
+        // STEP 2: Send the actual message
+        console.log(`📝 Sending message to ${formattedPhone}...`);
+        
+        // Add small delay to ensure chat is ready
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const result = await client.sendMessage(formattedPhone, message);
+
+        console.log(`✅ Message sent successfully to ${formattedPhone}`);
+        res.json({ 
+            success: true, 
+            messageId: result.id.id,
+            phone: formattedPhone,
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+        console.error('❌ Send error:', error.message);
+        
+        let errorMessage = error.message;
+        let errorCode = 'SEND_ERROR';
+
+        // Handle specific error cases
+        if (error.message.includes('No LID') || error.message.includes('LID')) {
+            errorMessage = 'Cannot send message to this contact. The contact might have strict privacy settings or has blocked you.';
+            errorCode = 'NO_LID_ERROR';
+        } else if (error.message.includes('not registered')) {
+            errorMessage = 'This phone number is not registered on WhatsApp.';
+            errorCode = 'NOT_REGISTERED';
+        } else if (error.message.includes('blocked')) {
+            errorMessage = 'You have been blocked by this contact.';
+            errorCode = 'BLOCKED';
+        } else if (error.message.includes('timeout')) {
+            errorMessage = 'Message sending timed out. Please try again.';
+            errorCode = 'TIMEOUT';
+        }
+
+        res.status(500).json({ 
+            success: false, 
+            error: errorMessage,
+            errorCode: errorCode,
+            details: error.message
+        });
+    }
+});
+
+// ✅ Alternative endpoint for /send-message (client compatibility)
+app.post('/send-message', async (req, res) => {
     try {
         if (!isReady || !client) {
             return res.status(400).json({ 
@@ -746,6 +836,91 @@ app.get('/chats', async (req, res) => {
             error: error.message
         });
     }
+});
+
+// API Endpoints documentation
+app.get('/endpoints', (req, res) => {
+    res.send(`
+        <html>
+            <head>
+                <title>API Endpoints - Railway WhatsApp</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+                    .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    .railway-badge { background: #0f0f23; color: white; padding: 5px 10px; border-radius: 15px; font-size: 12px; margin: 10px 0; }
+                    .endpoint { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 5px; border-left: 4px solid #25D366; }
+                    .method { background: #25D366; color: white; padding: 2px 8px; border-radius: 3px; font-size: 12px; }
+                    .method.get { background: #007bff; }
+                    .method.post { background: #28a745; }
+                    code { background: #e9ecef; padding: 2px 4px; border-radius: 3px; }
+                    .btn { background: #25D366; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; display: inline-block; margin: 5px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1>📋 API Endpoints</h1>
+                    <div class="railway-badge">🚂 Railway WhatsApp API</div>
+                    
+                    <h3>📱 WhatsApp Endpoints</h3>
+                    
+                    <div class="endpoint">
+                        <span class="method post">POST</span> <code>/send</code>
+                        <p>Send a single WhatsApp message</p>
+                        <pre>{"phone": "919876543210", "message": "Hello!"}</pre>
+                    </div>
+                    
+                    <div class="endpoint">
+                        <span class="method post">POST</span> <code>/send-message</code>
+                        <p>Alternative endpoint for sending messages (client compatibility)</p>
+                        <pre>{"phone": "919876543210", "message": "Hello!"}</pre>
+                    </div>
+                    
+                    <div class="endpoint">
+                        <span class="method post">POST</span> <code>/send-bulk</code>
+                        <p>Send messages to multiple contacts</p>
+                        <pre>{"contacts": [{"phone": "919876543210"}], "message": "Bulk message"}</pre>
+                    </div>
+                    
+                    <h3>🔧 System Endpoints</h3>
+                    
+                    <div class="endpoint">
+                        <span class="method get">GET</span> <code>/qr</code>
+                        <p>Display QR code for WhatsApp authentication</p>
+                    </div>
+                    
+                    <div class="endpoint">
+                        <span class="method get">GET</span> <code>/status</code>
+                        <p>Get WhatsApp connection status (JSON)</p>
+                    </div>
+                    
+                    <div class="endpoint">
+                        <span class="method get">GET</span> <code>/health</code>
+                        <p>Health check endpoint</p>
+                    </div>
+                    
+                    <div class="endpoint">
+                        <span class="method get">GET</span> <code>/chats</code>
+                        <p>Get recent WhatsApp chats</p>
+                    </div>
+                    
+                    <div class="endpoint">
+                        <span class="method post">POST</span> <code>/logout</code>
+                        <p>Logout from WhatsApp</p>
+                    </div>
+                    
+                    <h3>📊 Current Status</h3>
+                    <p><strong>WhatsApp:</strong> ${isReady ? '✅ Connected' : '❌ Not Connected'}</p>
+                    <p><strong>Server:</strong> ✅ Running</p>
+                    <p><strong>Platform:</strong> Railway</p>
+                    
+                    <a href="/" class="btn">🏠 Home</a>
+                    <a href="/qr" class="btn">📱 QR Code</a>
+                    <a href="/status" class="btn">📊 Status</a>
+                </div>
+            </body>
+        </html>
+    `);
 });
 
 // Logout endpoint
