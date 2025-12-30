@@ -116,7 +116,7 @@ const initWhatsAppClient = () => {
             const qrEndTime = Date.now();
             console.log(`✅ QR ready in ${qrEndTime - qrStartTime}ms!`);
             console.log('🌐 Railway URL: Check your Railway deployment URL + /qr');
-            console.log('🌐 Local: http://localhost:3000/qr');
+            console.log('🌐 Local: https://web-production-2c0a8.up.railway.app/qr');
         } catch (error) {
             console.error('❌ Failed to generate QR:', error);
         }
